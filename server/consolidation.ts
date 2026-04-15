@@ -101,6 +101,7 @@ export async function runConsolidation(trigger = "scheduled"): Promise<{
       lifecycle: "active",
       limit: 150,
     });
+    broadcast("consolidation_phase", { runId, phase: "loaded", memoriesCount: memories.length });
     if (memories.length < 6) {
       await convex.mutation(api.consolidation.updateRun, {
         runId,
@@ -119,9 +120,11 @@ export async function runConsolidation(trigger = "scheduled"): Promise<{
       )
       .join("\n");
 
+    broadcast("consolidation_phase", { runId, phase: "proposing" });
     const proposerRaw = await runLlm(PROPOSER_PROMPT, payload);
     const proposerJson = parseJson<{ proposals: Proposal[] }>(proposerRaw);
     const proposals = proposerJson?.proposals ?? [];
+    broadcast("consolidation_phase", { runId, phase: "proposed", proposalsCount: proposals.length });
 
     await convex.mutation(api.consolidation.updateRun, {
       runId,
@@ -141,6 +144,7 @@ export async function runConsolidation(trigger = "scheduled"): Promise<{
       .map((p, i) => `#${i}: ${JSON.stringify(p)}`)
       .join("\n")}\n\nOriginal memories:\n${payload}`;
 
+    broadcast("consolidation_phase", { runId, phase: "judging" });
     const judgeRaw = await runLlm(JUDGE_PROMPT, judgePayload);
     const judgeJson = parseJson<{
       decisions: { proposalIndex: number; approve: boolean; rationale: string }[];
@@ -149,6 +153,12 @@ export async function runConsolidation(trigger = "scheduled"): Promise<{
     const approved = new Set(
       decisions.filter((d) => d.approve).map((d) => d.proposalIndex),
     );
+    broadcast("consolidation_phase", {
+      runId,
+      phase: "judged",
+      approvedCount: approved.size,
+      rejectedCount: decisions.length - approved.size,
+    });
 
     for (let i = 0; i < proposals.length; i++) {
       if (!approved.has(i)) continue;

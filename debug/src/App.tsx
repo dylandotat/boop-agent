@@ -8,6 +8,7 @@ import {
   Activity01Icon,
   Link04Icon,
   DashboardSquare01Icon,
+  ArrowShrink02Icon,
 } from "@hugeicons/core-free-icons";
 import { api } from "../../convex/_generated/api.js";
 import { useSocket } from "./lib/useSocket.js";
@@ -17,6 +18,7 @@ import { AutomationsPanel } from "./components/AutomationsPanel.js";
 import { MemoryPanel } from "./components/MemoryPanel.js";
 import { EventsPanel } from "./components/EventsPanel.js";
 import { ConnectionsPanel } from "./components/ConnectionsPanel.js";
+import { ConsolidationPanel } from "./components/ConsolidationPanel.js";
 
 type View =
   | "dashboard"
@@ -24,6 +26,7 @@ type View =
   | "automations"
   | "memory"
   | "events"
+  | "consolidation"
   | "connections";
 
 type Theme = "dark" | "light";
@@ -34,6 +37,7 @@ const NAV_ICONS: Record<View, any> = {
   automations: WorkflowCircle03Icon,
   memory: AiBrain02Icon,
   events: Activity01Icon,
+  consolidation: ArrowShrink02Icon,
   connections: Link04Icon,
 };
 
@@ -43,6 +47,7 @@ const NAV: { id: View; label: string }[] = [
   { id: "automations", label: "Automations" },
   { id: "memory", label: "Memory" },
   { id: "events", label: "Events" },
+  { id: "consolidation", label: "Consolidation" },
   { id: "connections", label: "Connections" },
 ];
 
@@ -217,6 +222,7 @@ export function App() {
             {view === "automations" && <AutomationsPanel isDark={isDark} />}
             {view === "memory" && <MemoryPanel isDark={isDark} />}
             {view === "events" && <EventsPanel isDark={isDark} />}
+            {view === "consolidation" && <ConsolidationPanel isDark={isDark} />}
             {view === "connections" && <ConnectionsPanel isDark={isDark} />}
           </div>
         </main>

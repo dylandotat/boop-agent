@@ -37,6 +37,19 @@ async function main() {
     res.json({ ok });
   });
 
+  app.post("/consolidate", async (_req, res) => {
+    try {
+      const { runConsolidation } = await import("./consolidation.js");
+      // Fire-and-forget so the HTTP request returns immediately.
+      runConsolidation("manual").catch((err) =>
+        console.error("[consolidation] manual run failed", err),
+      );
+      res.json({ ok: true, triggered: "manual" });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
   app.post("/agents/:id/retry", async (req, res) => {
     const result = await retryAgent(req.params.id);
     if (!result) {
