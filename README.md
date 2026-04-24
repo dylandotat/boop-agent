@@ -1,8 +1,16 @@
-<p align="center">
+<table align="center">
+<tr>
+<td align="center" valign="middle">
   <img src="assets/boop.png" alt="Boop" width="220" />
-</p>
-
-# Boop
+  <h1>Boop</h1>
+</td>
+<td align="center" valign="middle">
+  <img src="assets/luna.jpeg" alt="Luna" width="180" />
+  <br>
+  <sub><em>Name and mascot inspired by my dog Luna</em></sub>
+</td>
+</tr>
+</table>
 
 An iMessage-based personal agent built on top of the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/overview).
 
