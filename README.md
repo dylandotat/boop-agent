@@ -46,7 +46,7 @@ Built on:
 
 Boop is meant to be a proactive agent — one that nudges you over iMessage with reminders, drafts, and little follow-ups. A small "boop" whenever it has something for you.
 
-And it's named after my dog, Luna, who gets plenty of them.
+And it's named after my dog, Luna, who gives plenty of them.
 
 ---
 
