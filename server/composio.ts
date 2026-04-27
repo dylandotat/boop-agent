@@ -9,10 +9,10 @@ export interface CuratedToolkit {
   slug: string;
   displayName: string;
   // "managed"  = Composio hosts a shared OAuth app — click Connect, it works.
-  // "byo"      = You must create your own OAuth app on the toolkit's dev portal
-  //              and register it as an Auth Config in Composio's dashboard first.
-  //              Happens when the toolkit's terms don't allow a shared OAuth app
-  //              (Twitter/X and LinkedIn are the usual suspects).
+  // "byo"      = User must register their own OAuth app on the toolkit's dev portal
+  //              and add it as an Auth Config in Composio's dashboard first.
+  //              Composio now ships managed OAuth for most toolkits; reserve "byo"
+  //              for the rare cases where a hosted app isn't available.
   authMode: ToolkitAuthMode;
 }
 
@@ -40,9 +40,9 @@ export const CURATED_TOOLKITS: CuratedToolkit[] = [
   { slug: "stripe", displayName: "Stripe", authMode: "managed" },
   { slug: "supabase", displayName: "Supabase", authMode: "managed" },
   { slug: "granola_mcp", displayName: "Granola", authMode: "managed" },
-  { slug: "salesforce", displayName: "Salesforce", authMode: "byo" },
-  { slug: "twitter", displayName: "Twitter / X", authMode: "byo" },
-  { slug: "linkedin", displayName: "LinkedIn", authMode: "byo" },
+  { slug: "salesforce", displayName: "Salesforce", authMode: "managed" },
+  { slug: "twitter", displayName: "Twitter / X", authMode: "managed" },
+  { slug: "linkedin", displayName: "LinkedIn", authMode: "managed" },
 ];
 
 const DISPLAY_NAME_BY_SLUG = new Map(CURATED_TOOLKITS.map((t) => [t.slug, t.displayName]));
