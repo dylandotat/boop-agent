@@ -206,38 +206,37 @@ export function DashboardPanel({ isDark }: { isDark: boolean }) {
       </div>
 
       {filtered.days.length > 1 && (
-        <div className={`rounded-xl border p-4 ${c.chart}`}>
-          <h3
-            className={`text-xs font-semibold uppercase tracking-wider mb-3 ${c.label}`}
-          >
-            Cost Over Time
-          </h3>
-          <StackedAreaChart
-            data={filtered.days}
-            keys={["agentCost"]}
-            colors={isDark ? ["#38bdf8"] : ["#0284c7"]}
-            labels={["Agents"]}
-            format={(v) => `$${v.toFixed(2)}`}
-            isDark={isDark}
-          />
-        </div>
-      )}
-
-      {filtered.days.length > 1 && (
-        <div className={`rounded-xl border p-4 ${c.chart}`}>
-          <h3
-            className={`text-xs font-semibold uppercase tracking-wider mb-3 ${c.label}`}
-          >
-            Token Usage Over Time
-          </h3>
-          <StackedAreaChart
-            data={filtered.days}
-            keys={["inputTokens", "outputTokens"]}
-            colors={isDark ? ["#38bdf8", "#34d399"] : ["#0284c7", "#059669"]}
-            labels={["Input", "Output"]}
-            format={fmtTokens}
-            isDark={isDark}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className={`rounded-xl border p-4 ${c.chart}`}>
+            <h3
+              className={`text-xs font-semibold uppercase tracking-wider mb-3 ${c.label}`}
+            >
+              Cost Over Time
+            </h3>
+            <StackedAreaChart
+              data={filtered.days}
+              keys={["agentCost"]}
+              colors={isDark ? ["#38bdf8"] : ["#0284c7"]}
+              labels={["Agents"]}
+              format={(v) => `$${v.toFixed(2)}`}
+              isDark={isDark}
+            />
+          </div>
+          <div className={`rounded-xl border p-4 ${c.chart}`}>
+            <h3
+              className={`text-xs font-semibold uppercase tracking-wider mb-3 ${c.label}`}
+            >
+              Token Usage Over Time
+            </h3>
+            <StackedAreaChart
+              data={filtered.days}
+              keys={["inputTokens", "outputTokens"]}
+              colors={isDark ? ["#38bdf8", "#34d399"] : ["#0284c7", "#059669"]}
+              labels={["Input", "Output"]}
+              format={fmtTokens}
+              isDark={isDark}
+            />
+          </div>
         </div>
       )}
 
