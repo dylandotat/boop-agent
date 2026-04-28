@@ -276,12 +276,17 @@ const WHOAMI_BY_TOOLKIT: Record<string, WhoAmITool> = {
 async function fetchToolkitIdentity(
   composio: NonNullable<ReturnType<typeof getComposio>>,
   slug: string,
+  connectedAccountId?: string,
 ): Promise<AccountIdentity> {
   const spec = WHOAMI_BY_TOOLKIT[slug];
   if (!spec) return {};
   try {
     const result = await composio.tools.execute(spec.tool, {
       userId: boopUserId(),
+      // Without this, Composio picks the user's *default* connection for the
+      // toolkit, so every Gmail row in the UI ends up labeled with the same
+      // (newest) email — even when distinct accounts are connected.
+      ...(connectedAccountId ? { connectedAccountId } : {}),
       arguments: spec.arguments,
       // Composio's tools.execute requires a pinned toolkit version OR this
       // flag. We skip pinning so a toolkit bump doesn't break identity lookup
@@ -318,7 +323,7 @@ async function getIdentityFor(
     console.warn(`[composio] failed to fetch identity for ${id}`, err);
   }
   if (!identity.label) {
-    const whoami = await fetchToolkitIdentity(composio, slug);
+    const whoami = await fetchToolkitIdentity(composio, slug, id);
     if (whoami.label) identity = { ...identity, ...whoami };
   }
   identityCache.set(id, { at: Date.now(), identity });
