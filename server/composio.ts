@@ -41,7 +41,7 @@ export const CURATED_TOOLKITS: CuratedToolkit[] = [
   { slug: "supabase", displayName: "Supabase", authMode: "managed" },
   { slug: "granola_mcp", displayName: "Granola", authMode: "managed" },
   { slug: "salesforce", displayName: "Salesforce", authMode: "managed" },
-  { slug: "twitter", displayName: "Twitter / X", authMode: "managed" },
+  { slug: "twitter", displayName: "Twitter / X", authMode: "byo" },
   { slug: "linkedin", displayName: "LinkedIn", authMode: "managed" },
 ];
 
