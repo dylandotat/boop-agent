@@ -36,7 +36,7 @@ export function createSelfMcp() {
           const tzInfo = await describeUserNow();
           const config = {
             model: await getRuntimeModel(),
-            envDefault: process.env.BOOP_MODEL ?? "claude-sonnet-4-6",
+            envDefault: process.env.BOOP_MODEL ?? "kimi-k2.6",
             availableModels: [...KNOWN_MODELS],
             userTimezone: tzInfo.isExplicit ? tzInfo.timezone : null,
             timezoneFallback: tzInfo.isExplicit ? null : tzInfo.timezone,
@@ -49,7 +49,7 @@ export function createSelfMcp() {
             // which one is actually running this turn.
             embeddingsEnabled: true,
             embeddingsProvider: activeEmbeddingProvider(),
-            sendblueEnabled: Boolean(process.env.SENDBLUE_API_KEY),
+            discordEnabled: Boolean(process.env.DISCORD_BOT_TOKEN),
           };
           return {
             content: [{ type: "text" as const, text: JSON.stringify(config, null, 2) }],
@@ -94,14 +94,12 @@ Use when the user tells you their timezone or location ("I'm in Dallas", "use ce
       ),
       tool(
         "set_model",
-        `Switch the Claude model used for both this dispatcher and any sub-agents. The change applies to the *next* turn (this turn finishes on the current model). Accepts either a canonical ID or a friendly alias.
+        `Switch the model used for both this dispatcher and any sub-agents. The change applies to the *next* turn (this turn finishes on the current model). Accepts either a canonical ID or a friendly alias.
 
 Aliases: ${Object.keys(MODEL_ALIASES).map((k) => `"${k}"`).join(", ")}
 Canonical: ${[...KNOWN_MODELS].map((k) => `"${k}"`).join(", ")}
 
-Use when the user says "use opus", "switch to sonnet", "make it faster (haiku)", etc.
-
-Cost note (approximate, per 1M output tokens): Opus 4.7 ≈ $75, Sonnet 4.6 ≈ $15, Haiku 4.5 ≈ $4. Mention briefly when switching to Opus.`,
+Use when the user asks to switch models (e.g. "use minimax", "switch to kimi", etc.).`,
         {
           model: z
             .string()

@@ -5,21 +5,19 @@ const MODEL_KEY = "model";
 const MODEL_TTL_MS = 30 * 1000;
 let cached: { at: number; value: string } | null = null;
 
-// User-friendly aliases the agent can pass through from iMessage. Resolved to
-// canonical Anthropic model IDs before being handed to the SDK.
+// User-friendly aliases for the Opencode Go models.
 export const MODEL_ALIASES: Record<string, string> = {
-  opus: "claude-opus-4-7",
-  "opus 4.7": "claude-opus-4-7",
-  sonnet: "claude-sonnet-4-6",
-  "sonnet 4.6": "claude-sonnet-4-6",
-  haiku: "claude-haiku-4-5-20251001",
-  "haiku 4.5": "claude-haiku-4-5-20251001",
+  kimi: "kimi-k2.6",
+  "kimi k2": "kimi-k2.6",
+  "kimi k2.6": "kimi-k2.6",
+  minimax: "minimax-m2.5",
+  "minimax 2.5": "minimax-m2.5",
+  "minimax m2.5": "minimax-m2.5",
 };
 
 export const KNOWN_MODELS = new Set<string>([
-  "claude-opus-4-7",
-  "claude-sonnet-4-6",
-  "claude-haiku-4-5-20251001",
+  "kimi-k2.6",
+  "minimax-m2.5",
 ]);
 
 export function resolveModelInput(input: string): string | null {
@@ -29,7 +27,7 @@ export function resolveModelInput(input: string): string | null {
 }
 
 function envFallback(): string {
-  return process.env.BOOP_MODEL ?? "claude-sonnet-4-6";
+  return process.env.BOOP_MODEL ?? "kimi-k2.6";
 }
 
 export async function getRuntimeModel(): Promise<string> {
