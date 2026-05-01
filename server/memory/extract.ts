@@ -1,8 +1,8 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
 import { api } from "../../convex/_generated/api.js";
 import { convex } from "../convex-client.js";
 import { embed } from "../embeddings.js";
-import { aggregateUsageFromResult, EMPTY_USAGE, type UsageTotals } from "../usage.js";
+import { type UsageTotals } from "../usage.js";
+import { callLlm } from "../llm.js";
 import { SEGMENT_DEFAULTS, makeMemoryId, type MemorySegment } from "./types.js";
 
 const EXTRACTION_PROMPT = `You are a memory-extraction subagent.
@@ -44,29 +44,21 @@ export async function extractAndStore(opts: {
   turnId: string;
 }): Promise<void> {
   const started = Date.now();
-  const requestedModel = process.env.BOOP_MODEL ?? "claude-sonnet-4-6";
+  const requestedModel = process.env.BOOP_MODEL ?? "kimi-k2.6";
   try {
     const payload = `USER: ${opts.userMessage}\n\nASSISTANT: ${opts.assistantReply}`;
-    let buffer = "";
-    let usage: UsageTotals = { ...EMPTY_USAGE };
-    for await (const msg of query({
-      prompt: payload,
-      options: {
-        systemPrompt: EXTRACTION_PROMPT,
-        model: requestedModel,
-        permissionMode: "bypassPermissions",
-      },
-    })) {
-      if (msg.type === "assistant") {
-        for (const block of msg.message.content) {
-          if (block.type === "text") buffer += block.text;
-        }
-      } else if (msg.type === "result") {
-        usage = aggregateUsageFromResult(msg, requestedModel);
-      }
-    }
+    const result = await callLlm(EXTRACTION_PROMPT, payload, requestedModel);
+    const buffer = result.text;
+    const usage: UsageTotals = {
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      costUsd: 0,
+    };
 
-    if (usage.costUsd > 0 || usage.inputTokens > 0) {
+    if (usage.inputTokens > 0) {
       await convex.mutation(api.usageRecords.record, {
         source: "extract",
         conversationId: opts.conversationId,

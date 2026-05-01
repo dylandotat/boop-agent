@@ -4,18 +4,18 @@
 // → recall user preferences → cheap Haiku classifier → on important, route
 // the summary into the interaction agent as a synthetic system message so it
 // gets the same tone/spawn pipeline as a real user turn.
-import { query } from "@anthropic-ai/claude-agent-sdk";
 import { api } from "../convex/_generated/api.js";
 import { convex } from "./convex-client.js";
-import { aggregateUsageFromResult, EMPTY_USAGE, type UsageTotals } from "./usage.js";
+import { type UsageTotals } from "./usage.js";
+import { callLlm } from "./llm.js";
 import { handleUserMessage } from "./interaction-agent.js";
-import { sendImessage } from "./sendblue.js";
+import { sendDiscordMessage } from "./discord.js";
 import { ensureTrigger, getComposio, listConnectedToolkits } from "./composio.js";
 import { ensureWebhookSubscription } from "./composio-webhook.js";
 import { describeUserNow } from "./timezone-config.js";
 
 const TRIGGER_SLUG = "GMAIL_NEW_GMAIL_MESSAGE";
-const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
+const CLASSIFIER_MODEL = "minimax-m2.5";
 
 // First event per connection since process boot is treated as warmup —
 // classification is skipped to avoid noise from any backfill behavior on
@@ -210,24 +210,20 @@ export async function classifyEmailImportance(
     `Body (truncated):\n${(email.body || "(empty)").slice(0, 1500)}`,
   ].join("\n");
 
-  let buffer = "";
-  let usage: UsageTotals = { ...EMPTY_USAGE };
-  for await (const msg of query({
-    prompt: userPrompt,
-    options: {
-      systemPrompt: `${RUBRIC_PROMPT}\n\n${prefBlock}\n\n${idBlock}\n\n${timeBlock}`,
-      model,
-      permissionMode: "bypassPermissions",
-    },
-  })) {
-    if (msg.type === "assistant") {
-      for (const block of msg.message.content) {
-        if (block.type === "text") buffer += block.text;
-      }
-    } else if (msg.type === "result") {
-      usage = aggregateUsageFromResult(msg, model);
-    }
-  }
+  const llmResult = await callLlm(
+    `${RUBRIC_PROMPT}\n\n${prefBlock}\n\n${idBlock}\n\n${timeBlock}`,
+    userPrompt,
+    model,
+  );
+  const buffer = llmResult.text;
+  const usage: UsageTotals = {
+    model: llmResult.model,
+    inputTokens: llmResult.inputTokens,
+    outputTokens: llmResult.outputTokens,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
+    costUsd: 0,
+  };
 
   let important = false;
   let summary: string | undefined;
@@ -243,7 +239,7 @@ export async function classifyEmailImportance(
     }
   }
 
-  if (recordUsage && (usage.costUsd > 0 || usage.inputTokens > 0)) {
+  if (recordUsage && usage.inputTokens > 0) {
     await convex.mutation(api.usageRecords.record, {
       source: "proactive",
       model: usage.model,
@@ -273,43 +269,22 @@ async function recallPreferenceLines(): Promise<string[]> {
   }
 }
 
-// Bring whatever the user put in BOOP_USER_PHONE to E.164 (+1XXXXXXXXXX).
-// Without this, a bare 10-digit number in env produces an `sms:NNNNNNNNNN`
-// conversation that doesn't match the `sms:+1NNNNNNNNNN` ID Sendblue uses
-// for inbound messages from the same person — proactive notices end up in
-// a parallel Convex conversation invisible to the user-driven thread.
-function normalizeProactivePhone(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("+")) return trimmed;
-  if (/^\d{10}$/.test(trimmed)) return `+1${trimmed}`;
-  if (/^\d{11,15}$/.test(trimmed)) return `+${trimmed}`;
-  return null;
-}
-
 async function dispatchProactiveNotice(summary: string): Promise<void> {
-  const raw = process.env.BOOP_USER_PHONE;
-  if (!raw) {
-    console.warn("[proactive] BOOP_USER_PHONE not set; skipping dispatch");
+  const channelId = process.env.BOOP_DISCORD_CHANNEL_ID;
+  if (!channelId) {
+    console.warn("[proactive] BOOP_DISCORD_CHANNEL_ID not set; skipping dispatch");
     return;
   }
-  const phone = normalizeProactivePhone(raw);
-  if (!phone) {
-    console.warn(
-      `[proactive] BOOP_USER_PHONE=${JSON.stringify(raw)} doesn't look like a valid phone number; skipping dispatch`,
-    );
-    return;
-  }
-  const conversationId = `sms:${phone}`;
+  const conversationId = `discord:${channelId}`;
   const reply = await handleUserMessage({
     conversationId,
     content: `[proactive notice] ${summary}`,
     kind: "proactive",
   });
-  // handleUserMessage only sends iMessage from inside send_ack; the final
-  // reply is the caller's responsibility.
+  // handleUserMessage only sends Discord messages from inside send_ack; the
+  // final reply is the caller's responsibility.
   if (reply && reply !== "(no reply)") {
-    await sendImessage(phone, reply);
+    await sendDiscordMessage(channelId, reply);
     await convex.mutation(api.messages.send, {
       conversationId,
       role: "assistant",
@@ -318,7 +293,7 @@ async function dispatchProactiveNotice(summary: string): Promise<void> {
   } else {
     // IA stayed silent — fall back to the raw classifier summary so the
     // user still gets the notice; otherwise classification was a no-op.
-    await sendImessage(phone, summary);
+    await sendDiscordMessage(channelId, summary);
     await convex.mutation(api.messages.send, {
       conversationId,
       role: "assistant",
