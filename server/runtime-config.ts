@@ -27,7 +27,10 @@ export function resolveModelInput(input: string): string | null {
 }
 
 function envFallback(): string {
-  return process.env.BOOP_MODEL ?? "kimi-k2.6";
+  // Agent SDK query() spawns Claude Code CLI which speaks Anthropic /messages
+  // format — only minimax-m2.5 (Anthropic-compatible) works there.
+  // BOOP_AGENT_MODEL lets ops pin a different compatible model explicitly.
+  return process.env.BOOP_AGENT_MODEL ?? process.env.BOOP_MODEL ?? "minimax-m2.5";
 }
 
 export async function getRuntimeModel(): Promise<string> {

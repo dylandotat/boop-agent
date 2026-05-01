@@ -1,4 +1,5 @@
-import { Client, GatewayIntentBits, Events, ChannelType } from "discord.js";
+import { Client, GatewayIntentBits, Events, ChannelType, REST, Routes } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
 import type { TextChannel, DMChannel } from "discord.js";
 
 // Sendable channels guaranteed to have .send() and .sendTyping().
@@ -162,8 +163,102 @@ export async function initDiscordBot(): Promise<void> {
     }
   });
 
-  client.once(Events.ClientReady, (c) => {
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand() || interaction.commandName !== "ask") return;
+
+    const content = interaction.options.getString("query", true).trim();
+    if (!content) {
+      await interaction.reply({ content: "Please provide a query.", ephemeral: true });
+      return;
+    }
+
+    await interaction.deferReply();
+
+    const conversationId = `discord:${interaction.channelId}`;
+    const turnTag = Math.random().toString(36).slice(2, 8);
+    const preview = content.length > 100 ? content.slice(0, 100) + "…" : content;
+    console.log(`[turn ${turnTag}] ← ${interaction.user.username} (/ask): ${JSON.stringify(preview)}`);
+    const start = Date.now();
+
+    const { claimed } = await convex.mutation(api.sendblueDedup.claim, {
+      handle: `discord:${interaction.id}`,
+    });
+    if (!claimed) {
+      await interaction.editReply("Already processing this request.");
+      return;
+    }
+
+    broadcast("message_in", {
+      conversationId,
+      content,
+      from: interaction.user.username,
+      handle: interaction.id,
+    });
+
+    try {
+      const reply = await handleUserMessage({
+        conversationId,
+        content,
+        turnTag,
+        onThinking: (t) => broadcast("thinking", { conversationId, t }),
+      });
+      if (reply) {
+        const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+        const replyPreview = reply.length > 100 ? reply.slice(0, 100) + "…" : reply;
+        console.log(
+          `[turn ${turnTag}] → reply (${elapsed}s, ${reply.length} chars): ${JSON.stringify(replyPreview)}`,
+        );
+        const chunks = chunkText(reply);
+        await interaction.editReply(chunks[0]);
+        for (const chunk of chunks.slice(1)) {
+          await interaction.followUp(chunk);
+        }
+        await convex.mutation(api.messages.send, {
+          conversationId,
+          role: "assistant",
+          content: reply,
+        });
+      } else {
+        console.log(`[turn ${turnTag}] → (no reply)`);
+        await interaction.editReply("Hmm — got nothing back. Try again?");
+      }
+    } catch (err) {
+      console.error(`[turn ${turnTag}] handler error`, err);
+      try {
+        await interaction.editReply("Sorry — I hit an error processing that.");
+      } catch {
+        /* interaction may have expired */
+      }
+    }
+  });
+
+  client.once(Events.ClientReady, async (c) => {
     console.log(`[discord] bot ready as ${c.user.tag}`);
+
+    const clientId = process.env.DISCORD_CLIENT_ID;
+    if (!clientId) {
+      console.log("[discord] DISCORD_CLIENT_ID not set — /ask slash command not registered");
+      return;
+    }
+    try {
+      const rest = new REST().setToken(token);
+      const commands = [
+        new SlashCommandBuilder()
+          .setName("ask")
+          .setDescription("Ask Boop a question or give it a task")
+          .addStringOption((opt) =>
+            opt
+              .setName("query")
+              .setDescription("What do you want to ask or do?")
+              .setRequired(true),
+          )
+          .toJSON(),
+      ];
+      await rest.put(Routes.applicationCommands(clientId), { body: commands });
+      console.log("[discord] /ask slash command registered globally");
+    } catch (err) {
+      console.error("[discord] failed to register /ask slash command", err);
+    }
   });
 
   await client.login(token);

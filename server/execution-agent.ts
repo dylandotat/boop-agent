@@ -144,6 +144,17 @@ export async function spawnExecutionAgent(opts: SpawnOptions): Promise<SpawnResu
       options: {
         systemPrompt: EXECUTION_SYSTEM,
         model: requestedModel,
+        // Inject Opencode base URL so the Claude Code subprocess targets the
+        // Opencode Go gateway instead of api.anthropic.com.
+        env: {
+          ...(process.env as Record<string, string | undefined>),
+          ANTHROPIC_BASE_URL:
+            process.env.ANTHROPIC_BASE_URL ??
+            process.env.OPENCODE_BASE_URL ??
+            "https://opencode.ai/zen/go/v1",
+          ANTHROPIC_API_KEY:
+            process.env.ANTHROPIC_API_KEY ?? process.env.OPENCODE_API_KEY ?? "",
+        },
         mcpServers,
         allowedTools,
         // Load .claude/skills/ so the model can invoke SKILL.md playbooks. Without

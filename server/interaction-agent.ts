@@ -312,6 +312,17 @@ export async function handleUserMessage(opts: HandleOpts): Promise<string> {
       options: {
         systemPrompt,
         model: requestedModel,
+        // Inject Opencode base URL so the Claude Code subprocess targets the
+        // Opencode Go gateway instead of api.anthropic.com.
+        env: {
+          ...(process.env as Record<string, string | undefined>),
+          ANTHROPIC_BASE_URL:
+            process.env.ANTHROPIC_BASE_URL ??
+            process.env.OPENCODE_BASE_URL ??
+            "https://opencode.ai/zen/go/v1",
+          ANTHROPIC_API_KEY:
+            process.env.ANTHROPIC_API_KEY ?? process.env.OPENCODE_API_KEY ?? "",
+        },
         mcpServers: {
           "boop-memory": memoryServer,
           "boop-spawn": spawnServer,
